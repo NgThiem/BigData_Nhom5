@@ -1,3 +1,4 @@
+# models/matching_net.py
 import torch
 from torch import nn
 import torch.nn.functional as F
@@ -41,8 +42,7 @@ class matching_net(nn.Module):
         self.objectness_head = ObjectnessHead(self.decoder_o.out_channels)
         self.ltrbs_head = BboxesHead(self.decoder_b.out_channels) if self.box_reg else None
 
-    def forward(self, sample, exemplars, **kwargs):
-
+    def forward(self, sample, exemplars_or_boxes, **kwargs):
         f = self.encoder(sample)
         if not isinstance(f, list):
             f = [f]
@@ -52,13 +52,13 @@ class matching_net(nn.Module):
 
         os, bs, f_TMs = [], [], []
         for i in range(len(f)):
-            
             fp = self.input_proj[i](f[i])
 
             if self.matcher is None:
                 f_TM = fp
             else:
-                f_TM = self.matcher(fp, exemplars)
+                # Truyền đúng dữ liệu vào TemplateMatching
+                f_TM = self.matcher(fp, exemplars_or_boxes)
 
             if self.fusion:
                 f_cat = torch.cat([fp, f_TM], dim=1)

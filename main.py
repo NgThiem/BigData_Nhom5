@@ -36,6 +36,8 @@ def config_parser():
     parser.add_argument('--resume', action='store_true', help='Flag for resume')
     parser.add_argument("--max_epochs", default=30, type=int)
     parser.add_argument('--multi_gpu', action='store_true', help='Flag to use multi_gpu')
+    parser.add_argument('--limit_train_batches', type=int, default=None,  # ← THÊM DÒNG NÀY
+                    help='Limit number of training batches per epoch (for fast debug)')
 
     # optimizer setting
     parser.add_argument('--weight_decay', default=1e-4, type=float)
@@ -107,6 +109,7 @@ def main(args):
     os.makedirs(os.path.join(args.logpath,'wandb'), exist_ok=True)
     trainer = Trainer(
         max_epochs=args.max_epochs,
+        limit_train_batches=args.limit_train_batches, 
         accelerator="auto",
         strategy="ddp" if args.multi_gpu else "auto",
         devices=-1 if args.multi_gpu else 1 if torch.cuda.is_available() else torch.cpu.device_count(),

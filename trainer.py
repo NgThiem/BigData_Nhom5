@@ -1,212 +1,136 @@
-import os
-import cv2
+
 import torch
+import pytorch_lightning as pl
 import numpy as np
-import torch.nn.functional as F
-
-from pytorch_lightning import LightningModule
-
+from torchvision.ops import nms
 from models import build_model
-from criterion import build_criterion
-from utils.TM_utils import Get_pred_boxes, GT_map, NMS
-from utils.box_refine import SAM_box_refiner
-from utils.log_utils import image_info_collector, Get_AP_scores, coco_style_annotation_generator, del_img_log_path, Get_MAE_RMSE
+from criterion.criterions_TM import SetCriterion_TM
 
-class Matching_Trainer(LightningModule):
+def match_name_keywords(n, name_keywords):
+    for keyword in name_keywords:
+        if keyword in n:
+            return True
+    return False
+
+class Matching_Trainer(pl.LightningModule):
     def __init__(self, args, datamodule):
         super().__init__()
-
         self.args = args
-
-        self.model = build_model(args)
-        self.criterion = build_criterion(args)
         self.datamodule = datamodule
-
-        self.GT_map_generator = GT_map(args)
-
-        self.AP_term = args.AP_term
-        self.AP_log = False
-        self.result_log = {'train': None, 'val': None, 'test': None}
-
-        if self.args.num_exemplars > 1:
-            if self.args.eval:
-                self.each_step = self.each_step_multi_exemplars
-            else:
-                raise ValueError("Multi-exemplar testing is only available in evaluation mode.")
-
-        self.refiner = None
-        if self.args.refine_box:
-            if self.args.eval:
-                from models.backbone.sam.sam import Sam_Backbone
-                self.temp_sam = Sam_Backbone(requires_grad=False, model_type = "vit_h")
-                self.refiner = SAM_box_refiner() 
-            else:
-                raise ValueError("SAM decoder box refinement is only available in evaluation mode.")
+        self.model = build_model(args)
+        self.criterion = SetCriterion_TM(args)
+        self.val_preds = []
+        self.val_gts = []
 
     def training_step(self, batch, batch_idx):
         return self.each_step(batch, 'train')
-    
+
     def validation_step(self, batch, batch_idx):
-        return self.each_step(batch, 'val')
-    
-    def test_step(self, batch, batch_idx):
-        return self.each_step(batch, 'test')
-    
-    def on_train_epoch_end(self):
-        self.result_log['train'] = self.each_epoch_end(stage='train')
-        if self.result_log['train'] != None and self.result_log['val'] != None:
-            print(self.result_log['train'] + '\n' + self.result_log['val'])
+        loss = self.each_step(batch, 'val')
+        
+        image = batch['image']
+        exemplars = batch['exemplars']
+        boxes = batch['boxes']
+
+        if self.args.template_type in ['roi_align', 'prototype']:
+            K = self.args.num_exemplars
+            boxes_for_tm = []
+            for b in boxes:
+                if b.size(0) >= K:
+                    boxes_for_tm.append(b[:K])
+                else:
+                    pad = b[-1:].repeat(K - b.size(0), 1)
+                    boxes_for_tm.append(torch.cat([b, pad], dim=0))
+            model_input = boxes_for_tm
+        else:
+            model_input = exemplars
+
+        pred_objectness, pred_regressions, _, _ = self.model(image, model_input)
+        
+        obj_map = pred_objectness[0].sigmoid()  # [B, 1, H, W]
+        ltrb_map = pred_regressions[0]          # [B, 4, H, W]
+        B, _, H, W = obj_map.shape
+
+        for i in range(B):
+            scores = obj_map[i, 0].view(-1)
+            topk_scores, topk_idx = scores.topk(100)
+            y = topk_idx // W
+            x = topk_idx % W
+
+            l = ltrb_map[i, 0, y, x]
+            t = ltrb_map[i, 1, y, x]
+            r = ltrb_map[i, 2, y, x]
+            b = ltrb_map[i, 3, y, x]
+
+            x1 = (x - l).clamp(min=0, max=W - 1)
+            y1 = (y - t).clamp(min=0, max=H - 1)
+            x2 = (x + r).clamp(min=0, max=W - 1)
+            y2 = (y + b).clamp(min=0, max=H - 1)
+
+            pred_boxes = torch.stack([x1, y1, x2, y2], dim=1).float()
+            pred_boxes = pred_boxes * (1024.0 / H)
+
+            keep = nms(pred_boxes, topk_scores, self.args.NMS_iou_threshold)
+            pred_count = keep.numel()
+            gt_count = boxes[i].size(0)
+
+            self.val_preds.append(pred_count)
+            self.val_gts.append(gt_count)
+
+        return loss
 
     def on_validation_epoch_end(self):
-        self.result_log['val'] = self.each_epoch_end(stage='val')
+        if len(self.val_preds) == 0:
+            print("WARNING: No predictions collected during validation!")
+            return
 
-    def on_test_epoch_end(self):
-        self.result_log['test'] = self.each_epoch_end(stage='test')
-        if self.result_log['test'] != None:
-            print(self.result_log['test'])
-    
-    def on_train_epoch_start(self):
-        epoch = self.trainer.current_epoch
-        if (epoch == 0) or (epoch % self.AP_term == (self.AP_term-1)):
-            self.AP_log = True
+        preds = np.array(self.val_preds)
+        gts = np.array(self.val_gts)
+        mae = np.mean(np.abs(preds - gts))
+        rmse = np.sqrt(np.mean((preds - gts) ** 2))
+
+        print(f"\n VALIDATION EPOCH END — MAE: {mae:.3f}, RMSE: {rmse:.3f}")
+
+        # Log cho Lightning (hiển thị trên progress bar)
+        self.log('val_mae', mae, prog_bar=True, sync_dist=True)
+        self.log('val_rmse', rmse, prog_bar=True, sync_dist=True)
+
+        # Reset buffer
+        self.val_preds.clear()
+        self.val_gts.clear()
+
+    def each_step(self, batch, mode):
+        image = batch['image']
+        exemplars = batch['exemplars']
+        boxes = batch['boxes']
+
+        if self.args.template_type in ['roi_align', 'prototype']:
+            K = self.args.num_exemplars
+            boxes_for_tm = []
+            for b in boxes:
+                if b.size(0) >= K:
+                    boxes_for_tm.append(b[:K])
+                else:
+                    pad = b[-1:].repeat(K - b.size(0), 1)
+                    boxes_for_tm.append(torch.cat([b, pad], dim=0))
+            model_input = boxes_for_tm
         else:
-            self.AP_log = False
+            model_input = exemplars
 
-    def each_step_multi_exemplars(self, batch, stage):
-        image = batch["image"]
-        gt_boxes = batch['boxes']
-        multi_exemplars = batch["exemplars"]
+        pred_objectness, pred_regressions, matching_feature, _ = self.model(image, model_input)
 
-        if len(multi_exemplars) != 1:
-            raise ValueError("Multi-exemplar testing is only available for batchsize == 1.")
-
-        batch['regression_ablation_a'] = self.args.ablation_no_box_regression
-        batch['regression_ablation_b'] = self.args.regression_scaling_imgsize
-        batch['regression_ablation_c'] = self.args.regression_scaling_WH_only
-
-        losses = {
-            'loss_ce': [],
-            'loss_giou': [],
-            'loss': []
+        targets = [{'boxes': b} for b in boxes]
+        outputs = {
+            'objectness': pred_objectness,
+            'lbrts': pred_regressions
         }
-        pred_logits = []
-        pred_boxes = []
-        ref_points = []
-        multi_exemplars = [[exemplars.unsqueeze(0)] for exemplars in multi_exemplars[0]]
-        for exemplars in multi_exemplars:
-            pred_objectness, pred_regressions, matching_feature, _ = self.model(image, exemplars)
-            preds, gts, vis_gt_map = self.GT_map_generator.Get_pred_gts(pred_objectness, pred_regressions, gt_boxes, exemplars, batch)
-
-            loss_dict = self.criterion(preds, gts)
-            loss_dict['loss'] = loss_dict['loss_ce'] + loss_dict['loss_giou']
-            losses['loss_ce'].append(loss_dict['loss_ce'])
-            losses['loss_giou'].append(loss_dict['loss_giou'])
-            losses['loss'].append(loss_dict['loss'])
-
-            _pred_logits, _pred_boxes, _ref_points = Get_pred_boxes(pred_objectness, pred_regressions, exemplars, batch, self.args.NMS_cls_threshold, not batch['regression_ablation_a'])
-            pred_logits.append(_pred_logits[0])
-            pred_boxes.append(_pred_boxes[0])
-            ref_points.append(_ref_points[0])
-
-        pred_logits = [torch.concat(pred_logits)]
-        pred_boxes = [torch.concat(pred_boxes)]
-        ref_points = [torch.concat(ref_points)]
-        
-        if self.args.refine_box:
-            backbone_feature = self.temp_sam(image)
-            pred_logits, pred_boxes, ref_points = self.refiner(pred_logits, pred_boxes, ref_points, image, backbone_feature)
-        pred_logits, pred_boxes, ref_points = NMS(pred_logits, pred_boxes, ref_points, self.args.NMS_iou_threshold)
-        image_info_collector(self.args.logpath, stage, batch, pred_logits, pred_boxes, ref_points)
-
-        return {'loss': sum(losses['loss'])}
-
-    def each_step(self, batch, stage):
-        image = batch["image"]
-        gt_boxes = batch['boxes']
-        exemplars = batch["exemplars"]
-
-        batch['regression_ablation_a'] = self.args.ablation_no_box_regression
-        batch['regression_ablation_b'] = self.args.regression_scaling_imgsize
-        batch['regression_ablation_c'] = self.args.regression_scaling_WH_only
-
-        pred_objectness, pred_regressions, matching_feature, _ = self.model(image, exemplars)
-        preds, gts, vis_gt_map = self.GT_map_generator.Get_pred_gts(pred_objectness, pred_regressions, gt_boxes, exemplars, batch)
-
-
-        loss_dict = self.criterion(preds, gts)
-        loss_dict['loss'] = loss_dict['loss_ce'] + loss_dict['loss_giou']
-
-        new_loss_dict = {}
-        for key in loss_dict.keys():
-            new_loss_dict[f"{stage}/{key}"] = loss_dict[key]
-
-        if (self.AP_log and stage == 'val') or stage == 'test':
-            pred_logits, pred_boxes, ref_points = Get_pred_boxes(pred_objectness, pred_regressions, exemplars, batch, self.args.NMS_cls_threshold, not batch['regression_ablation_a'])
-
-            if self.args.refine_box:
-                backbone_feature = self.temp_sam(image)
-                pred_logits, pred_boxes, ref_points = self.refiner(pred_logits, pred_boxes, ref_points, image, backbone_feature)
-            pred_logits, pred_boxes, ref_points = NMS(pred_logits, pred_boxes, ref_points, self.args.NMS_iou_threshold)
-            image_info_collector(self.args.logpath, stage, batch, pred_logits, pred_boxes, ref_points)
-
-        self.log_dict(new_loss_dict, on_step=False, on_epoch=True, sync_dist=True if self.args.multi_gpu else False, batch_size=self.args.batch_size)
-        return {'loss': loss_dict['loss']}
-
-    def print_presence_map(self, img_names, pred_map, gt_map, stage):
-        pred_path = os.path.join(self.args.logpath, 'Debug_presence_pred')
-        gt_path = os.path.join(self.args.logpath, 'Debug_presence_gt')
-        os.makedirs(pred_path, exist_ok=True)
-        os.makedirs(gt_path, exist_ok=True)
-
-        pred_map = [pred.sigmoid() for pred in pred_map]
-        for l in range(len(pred_map)):
-            for bi in range(len(pred_map[l])):
-                P = pred_map[l][bi].permute(1,2,0).detach().cpu().numpy()
-                P = (P * 254.).astype(np.uint8)
-                G = gt_map[l][bi].permute(1,2,0).detach().cpu().numpy()
-                G = (G * 254.).astype(np.uint8)
-
-                cv2.imwrite(os.path.join(pred_path, f"pred_{l}_{img_names[bi]}_{stage}.jpg"), P)
-                cv2.imwrite(os.path.join(gt_path, f"gt_{l}_{img_names[bi]}.jpg"), G)
-
-    def each_epoch_end(self, stage):
-        epoch = self.trainer.current_epoch
-        result = None
-
-        if self.trainer.global_rank == 0:
-            metrics = self.trainer.logged_metrics
-            result = f"Epoch {epoch}:"
-            result = result + " | " + " | ".join([f"{key.split('_epoch')[0]}: {metrics[key]:.4f}" for key in metrics.keys() if ((stage in key) and ('step' not in key) and ('AP' not in key))])
-
-        if ((self.AP_log and stage == 'val') or stage == 'test'):
-            self.trainer.strategy.barrier()
-
-            if self.trainer.global_rank == 0:
-                coco_style_annotation_generator(self.args.logpath, stage)
-
-            self.trainer.strategy.barrier()
-
-            MAE, RMSE = Get_MAE_RMSE(self.args.logpath, stage)
-            AP, AP50, AP75 = Get_AP_scores(self.args.logpath, stage, self.args.visualize)
-
-            self.log(f'{stage}/AP', AP, sync_dist=True if self.args.multi_gpu else False)
-            self.log(f'{stage}/AP50', AP50, sync_dist=True if self.args.multi_gpu else False)
-            self.log(f'{stage}/AP75', AP75, sync_dist=True if self.args.multi_gpu else False)
-
-            self.log(f'{stage}/MAE', MAE, sync_dist=True if self.args.multi_gpu else False)
-            self.log(f'{stage}/RMSE', RMSE, sync_dist=True if self.args.multi_gpu else False)
-
-            self.trainer.strategy.barrier()
-
-            if self.trainer.global_rank == 0:
-                result += f"\nEpoch {epoch}: | {stage}/AP: {AP:.2f} | {stage}/AP50: {AP50:.2f} | {stage}/AP75: {AP75:.2f}"
-                result += f" | {stage}/MAE: {MAE:.2f} | {stage}/RMSE: {RMSE:.2f}"
-                del_img_log_path(self.args.logpath, stage)
-
-        return result
+        loss_dict = self.criterion(outputs, targets)
+        loss = sum(loss_dict.values())
+        self.log(f'{mode}_loss', loss, prog_bar=True, sync_dist=True)
+        return loss
 
     def configure_optimizers(self):
-
+        weight_decay = getattr(self.args, 'weight_decay', 1e-4)
         param_dicts = [
             {
                 "params": [
@@ -220,25 +144,15 @@ class Matching_Trainer(LightningModule):
                     p for n, p in self.model.named_parameters()
                     if match_name_keywords(n, ['backbone']) and p.requires_grad
                 ],
-                "lr": self.args.lr_backbone
+                "lr": getattr(self.args, 'lr_backbone', 0.0)
             }
         ]
-        
-        milestones = []
-        if self.args.lr_drop:
+
+        if getattr(self.args, 'lr_drop', False):
             milestones = [int(self.args.max_epochs * 0.6)]
         else:
             milestones = [self.args.max_epochs + 1]
 
-        optimizer = torch.optim.AdamW(param_dicts, lr=self.args.lr, weight_decay=self.args.weight_decay)
+        optimizer = torch.optim.AdamW(param_dicts, lr=self.args.lr, weight_decay=weight_decay)
         lr_scheduler = torch.optim.lr_scheduler.MultiStepLR(optimizer, milestones=milestones, gamma=0.1)
-
         return {"optimizer": optimizer, "lr_scheduler": lr_scheduler}
-
-def match_name_keywords(n, name_keywords):
-    out = False
-    for b in name_keywords:
-        if b in n:
-            out = True
-            break
-    return out

@@ -1,0 +1,20 @@
+python main.py \
+--project_name "Few-Shot Pattern Detection" \
+--datapath /kaggle/input/sku10dataset \
+--logpath ./outputs/sku10 \
+--modeltype matching_net \
+--dataset SKU10 \
+--num_workers 0 \
+--max_epochs 10 \
+--batch_size 1 \
+--num_exemplars 5 \
+--backbone sam \
+--encoder original \
+--emb_dim 512 \
+--fusion \
+--NMS_cls_threshold 0.1 \
+--NMS_iou_threshold 0.5 \
+--lr 1e-4 \
+--lr_backbone 0 \
+--lr_drop \
+--nowandb

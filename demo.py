@@ -151,7 +151,7 @@ class Inference(nn.Module):
 
 def main(args):
     Infer = Inference(args)    
-    state_dict = torch.load(args.ckpt, map_location='cpu')['state_dict']
+    state_dict = torch.load(args.ckpt, map_location='cpu', weights_only=False)['state_dict']
     Infer.load_state_dict(state_dict, strict=False)
     Infer.eval()
     if torch.cuda.is_available():
