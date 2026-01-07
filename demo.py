@@ -175,12 +175,12 @@ def main(args):
 
                 example = gradio.Examples(
                     examples=[
-                        ["demo/1.jpg"],
-                        ["demo/2.jpg"],
-                        ["demo/3.jpg"],
-                        ["demo/4.jpg"],
-                        ["demo/5.jpg"],
-                        ["demo/6.jpg"],
+                        ["demo/train0.jpg"],
+                        ["demo/train22.jpg"],
+                        ["demo/train27.jpg"],
+                        ["demo/train3.jpg"],
+                        ["demo/train43.jpg"],
+                        ["demo/train55.jpg"],
                     ],
                     inputs=image_input,
                     cache_examples=False,
