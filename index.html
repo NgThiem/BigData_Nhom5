@@ -264,63 +264,87 @@
   </div>
 
   <!-- JavaScript cho Carousel (chỉ áp dụng cho sơ đồ & demo) -->
- <script>
+ <script defer>
   function initCarousel(trackSelector, dotsId) {
-    const track = document.querySelector(trackSelector);
-    if (!track) return; // Nếu không tìm thấy track, thoát
-
-    const slides = track.querySelectorAll('.carousel-slide');
-    const dotsContainer = document.getElementById(dotsId);
-    let currentIndex = 0;
-
-    // Tạo chấm
-    slides.forEach((_, i) => {
-      const dot = document.createElement('div');
-      dot.classList.add('dot');
-      if (i === 0) dot.classList.add('active');
-      dot.addEventListener('click', () => goToSlide(i));
-      dotsContainer.appendChild(dot);
-    });
-
-    const dots = dotsContainer.querySelectorAll('.dot');
-
-    function updateCarousel() {
-      track.style.transform = `translateX(-${currentIndex * 100}%)`;
-      dots.forEach((dot, i) => {
-        dot.classList.toggle('active', i === currentIndex);
+    // Chờ DOM tải xong
+    if (document.readyState === 'loading') {
+      document.addEventListener('DOMContentLoaded', () => {
+        initialize();
       });
+    } else {
+      initialize();
     }
 
-    function goToSlide(index) {
-      currentIndex = index;
-      updateCarousel();
-    }
+    function initialize() {
+      const track = document.querySelector(trackSelector);
+      if (!track) {
+        console.warn(`Carousel track not found: ${trackSelector}`);
+        return;
+      }
 
-    // Nút Prev/Next
-    const container = track.closest('.carousel-container');
-    if (!container) return;
+      const slides = track.querySelectorAll('.carousel-slide');
+      if (slides.length === 0) {
+        console.warn(`No slides found in: ${trackSelector}`);
+        return;
+      }
 
-    const prevBtn = container.querySelector('.prev-btn');
-    const nextBtn = container.querySelector('.next-btn');
+      const dotsContainer = document.getElementById(dotsId);
+      if (!dotsContainer) {
+        console.warn(`Dots container not found: ${dotsId}`);
+        return;
+      }
 
-    if (prevBtn) {
-      prevBtn.addEventListener('click', () => {
-        currentIndex = (currentIndex - 1 + slides.length) % slides.length;
+      let currentIndex = 0;
+
+      // Tạo chấm
+      slides.forEach((_, i) => {
+        const dot = document.createElement('div');
+        dot.classList.add('dot');
+        if (i === 0) dot.classList.add('active');
+        dot.addEventListener('click', () => goToSlide(i));
+        dotsContainer.appendChild(dot);
+      });
+
+      const dots = dotsContainer.querySelectorAll('.dot');
+
+      function updateCarousel() {
+        track.style.transform = `translateX(-${currentIndex * 100}%)`;
+        dots.forEach((dot, i) => {
+          dot.classList.toggle('active', i === currentIndex);
+        });
+      }
+
+      function goToSlide(index) {
+        currentIndex = index;
         updateCarousel();
-      });
-    }
+      }
 
-    if (nextBtn) {
-      nextBtn.addEventListener('click', () => {
-        currentIndex = (currentIndex + 1) % slides.length;
-        updateCarousel();
-      });
+      // Nút Prev/Next
+      const container = track.closest('.carousel-container');
+      if (!container) return;
+
+      const prevBtn = container.querySelector('.prev-btn');
+      const nextBtn = container.querySelector('.next-btn');
+
+      if (prevBtn) {
+        prevBtn.addEventListener('click', () => {
+          currentIndex = (currentIndex - 1 + slides.length) % slides.length;
+          updateCarousel();
+        });
+      }
+
+      if (nextBtn) {
+        nextBtn.addEventListener('click', () => {
+          currentIndex = (currentIndex + 1) % slides.length;
+          updateCarousel();
+        });
+      }
     }
   }
 
-  // Khởi tạo khi DOM sẵn sàng
+  // Khởi tạo carousel sau khi DOM sẵn sàng
   document.addEventListener('DOMContentLoaded', () => {
-    initCarousel('.tmr-carousel .carousel-track', 'system-dots');
+    initCarousel('.system-carousel .carousel-track', 'system-dots');
     initCarousel('.metrics-carousel .carousel-track', 'metrics-dots');
     initCarousel('.demo-carousel .carousel-track', 'demo-dots');
   });
