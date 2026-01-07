@@ -5,7 +5,6 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>Big Data Nhóm 5 – Few-Shot Pattern Detection</title>
   <style>
-    /* --- CSS giống bản trước, không thay đổi --- */
     * { margin: 0; padding: 0; box-sizing: border-box; }
     body {
       font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
@@ -146,16 +145,7 @@
         Phương pháp được phát triển dựa trên nền tảng khớp mẫu cổ điển, mở rộng để xử lý 
         đa tỷ lệ, xoay và nhiễu.
       </p>
-      <p style="font-size: 0.95rem; color: #555; margin-top: 15px; padding-top: 10px; border-top: 1px solid #eee;">
-        <strong>Nguồn tham khảo chính:</strong> 
-        Eunchan Jo, Dahyun Kang, Sanghyun Kim, Yunseon Choi, Minsu Cho, 
-        "Few-Shot Pattern Detection via Template Matching and Regression" 
-        <em>Proceedings of the IEEE/CVF International Conference on Computer Vision. 2025.</em>, 
-        pp. 1–5, 2023, 
-        doi: <a href="https://openaccess.thecvf.com/content/ICCV2025/html/Jo_Few-Shot_Pattern_Detection_via_Template_Matching_and_Regression_ICCV_2025_paper.html" target="_blank" style="color: #1e3a8a;">10.1109/ICIP49359.2023.123456789</a>.
-      </p>
-
-
+      
       <!-- Carousel: Sơ đồ hệ thống -->
       <h3>🖼️ Kiến Trúc Mô Hình TMR</h3>
       <div class="system-carousel">
@@ -185,7 +175,11 @@
       </div>
 
       <p style="font-size: 0.95rem; color: #555; margin-top: 20px; padding-top: 15px; border-top: 1px solid #eee;">
-        <strong>Trích dẫn:</strong> E. Jo et al., ICCV 2025. 
+        <strong>Nguồn tham khảo chính:</strong> 
+        Eunchan Jo, Dahyun Kang, Sanghyun Kim, Yunseon Choi, Minsu Cho, 
+        "Few-Shot Pattern Detection via Template Matching and Regression" 
+        <em>Proceedings of the IEEE/CVF International Conference on Computer Vision. 2025.</em>, 
+        pp. 1–5, 2023
         <a href="https://openaccess.thecvf.com/content/ICCV2025/html/Jo_Few-Shot_Pattern_Detection_via_Template_Matching_and_Regression_ICCV_2025_paper.html" target="_blank">[Link]</a>
       </p>
     </section>
@@ -270,51 +264,66 @@
   </div>
 
   <!-- JavaScript cho Carousel (chỉ áp dụng cho sơ đồ & demo) -->
-  <script>
-    function initCarousel(trackSelector, dotsId) {
-      const track = document.querySelector(trackSelector);
-      const slides = track.querySelectorAll('.carousel-slide');
-      const dotsContainer = document.getElementById(dotsId);
-      let currentIndex = 0;
+ <script>
+  function initCarousel(trackSelector, dotsId) {
+    const track = document.querySelector(trackSelector);
+    if (!track) return; // Nếu không tìm thấy track, thoát
 
-      slides.forEach((_, i) => {
-        const dot = document.createElement('div');
-        dot.classList.add('dot');
-        if (i === 0) dot.classList.add('active');
-        dot.addEventListener('click', () => goToSlide(i));
-        dotsContainer.appendChild(dot);
+    const slides = track.querySelectorAll('.carousel-slide');
+    const dotsContainer = document.getElementById(dotsId);
+    let currentIndex = 0;
+
+    // Tạo chấm
+    slides.forEach((_, i) => {
+      const dot = document.createElement('div');
+      dot.classList.add('dot');
+      if (i === 0) dot.classList.add('active');
+      dot.addEventListener('click', () => goToSlide(i));
+      dotsContainer.appendChild(dot);
+    });
+
+    const dots = dotsContainer.querySelectorAll('.dot');
+
+    function updateCarousel() {
+      track.style.transform = `translateX(-${currentIndex * 100}%)`;
+      dots.forEach((dot, i) => {
+        dot.classList.toggle('active', i === currentIndex);
       });
+    }
 
-      const dots = dotsContainer.querySelectorAll('.dot');
+    function goToSlide(index) {
+      currentIndex = index;
+      updateCarousel();
+    }
 
-      function updateCarousel() {
-        track.style.transform = `translateX(-${currentIndex * 100}%)`;
-        dots.forEach((dot, i) => {
-          dot.classList.toggle('active', i === currentIndex);
-        });
-      }
+    // Nút Prev/Next
+    const container = track.closest('.carousel-container');
+    if (!container) return;
 
-      function goToSlide(index) {
-        currentIndex = index;
-        updateCarousel();
-      }
+    const prevBtn = container.querySelector('.prev-btn');
+    const nextBtn = container.querySelector('.next-btn');
 
-      const container = track.closest('.carousel-container');
-      container.querySelector('.prev-btn').addEventListener('click', () => {
+    if (prevBtn) {
+      prevBtn.addEventListener('click', () => {
         currentIndex = (currentIndex - 1 + slides.length) % slides.length;
-        updateCarousel();
-      });
-      container.querySelector('.next-btn').addEventListener('click', () => {
-        currentIndex = (currentIndex + 1) % slides.length;
         updateCarousel();
       });
     }
 
-    document.addEventListener('DOMContentLoaded', () => {
-      initCarousel('.system-carousel .carousel-track', 'system-dots');
-      initCarousel('.demo-carousel .carousel-track', 'demo-dots');
-      initCarousel('.metrics-carousel .carousel-track', 'metrics-dots');
-    });
-  </script>
+    if (nextBtn) {
+      nextBtn.addEventListener('click', () => {
+        currentIndex = (currentIndex + 1) % slides.length;
+        updateCarousel();
+      });
+    }
+  }
+
+  // Khởi tạo khi DOM sẵn sàng
+  document.addEventListener('DOMContentLoaded', () => {
+    initCarousel('.tmr-carousel .carousel-track', 'tmr-dots');
+    initCarousel('.metrics-carousel .carousel-track', 'metrics-dots');
+    initCarousel('.demo-carousel .carousel-track', 'demo-dots');
+  });
+</script>
 </body>
 </html>
