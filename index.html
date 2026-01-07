@@ -75,13 +75,52 @@
       .container { border-radius: 0; }
       header h1 { font-size: 1.8rem; }
     }
+    .image-scroll {
+  display: flex;
+  overflow-x: auto;
+  gap: 20px;
+  padding: 15px 0;
+  margin: 20px 0;
+  -webkit-overflow-scrolling: touch; /* Mượt trên iOS */
+  scrollbar-width: thin; /* Firefox */
+}
+  .image-scroll::-webkit-scrollbar {
+    height: 8px;
+  }
+  .image-scroll::-webkit-scrollbar-thumb {
+    background: #cbd5e1;
+    border-radius: 4px;
+  }
+  .image-scroll::-webkit-scrollbar-track {
+    background: #f1f5f9;
+  }
+  .scroll-item {
+    flex: 0 0 auto;
+    width: 320px;
+    text-align: center;
+  }
+  .scroll-item img {
+    width: 100%;
+    height: auto;
+    border-radius: 8px;
+    border: 1px solid #ddd;
+    transition: transform 0.2s;
+  }
+  .scroll-item img:hover {
+    transform: scale(1.02);
+  }
+  .scroll-item .caption {
+    margin-top: 8px;
+    font-size: 0.95rem;
+    color: #555;
+  }
   </style>
 </head>
 <body>
   <div class="container">
     <header>
       <h1>Phân Tích Dữ Liệu Lớn</h1>
-      <p>Đề tài: Xử lý dữ liệu lớn bằng kỹ thuật Đối sánh mẫu</p>
+      <h2>Đề tài: Xử lý dữ liệu lớn bằng kỹ thuật Đối sánh mẫu</h2>
     </header>
 
     <section>
@@ -97,7 +136,7 @@
       </ul>
       <p style="margin-top: 10px;">
         Phương pháp được phát triển dựa trên nền tảng khớp mẫu cổ điển, mở rộng để xử lý 
-        đa tỷ lệ, xoay và nhiễu — phù hợp với dữ liệu thực tế từ camera giám sát.
+        đa tỷ lệ, xoay và nhiễu.
       </p>
       <p style="font-size: 0.95rem; color: #555; margin-top: 15px; padding-top: 10px; border-top: 1px solid #eee;">
         <strong>Nguồn tham khảo chính:</strong> 
@@ -128,18 +167,18 @@
     <li><strong>Khớp mẫu</strong> có lúc tốt, nhưng không ổn định — cần điều chỉnh thêm.</li>
   </ul>
 
-  <div class="image-grid">
-    <div class="image-card">
-      <img src="images/Biểu đồ Train Loss theo Epoch.png" alt="So sánh Train Loss">
-      <div class="caption">Train Loss qua các Epoch</div>
+  <div class="image-scroll">
+    <div class="scroll-item">
+      <img src="images/Biểu đồ Train Loss theo Epoch.png" alt="Train Loss">
+      <div class="caption">Biểu đồ Train Loss theo Epoch</div>
     </div>
-    <div class="image-card">
-      <img src="images/Biểu đồ MAE Validation theo Epoch.png" alt="So sánh MAE Validation">
-      <div class="caption">MAE Validation qua các Epoch</div>
+    <div class="scroll-item">
+      <img src="images/Biểu đồ MAE Validation theo Epoch.png" alt="MAE Validation">
+      <div class="caption">Biểu đồ MAE Validation theo Epoch</div>
     </div>
-    <div class="image-card">
-      <img src="images/Biểu đồ RMSE Validation theo Epoch.png" alt="So sánh RMSE Validation">
-      <div class="caption">RMSE Validation qua các Epoch</div>
+    <div class="scroll-item">
+      <img src="images/Biểu đồ RMSE Validation theo Epoch.png" alt="RMSE Validation">
+      <div class="caption">Biểu đồ RMSE Validation theo Epoch</div>
     </div>
   </div>
 
