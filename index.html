@@ -3,8 +3,9 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>Big Data Nhóm 5 – Project Demo</title>
+  <title>Big Data Nhóm 5 – Few-Shot Pattern Detection</title>
   <style>
+    /* --- CSS giống bản trước, không thay đổi --- */
     * { margin: 0; padding: 0; box-sizing: border-box; }
     body {
       font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
@@ -28,98 +29,106 @@
       text-align: center;
     }
     header h1 { font-size: 2.2rem; }
+    header h2 {
+      font-size: 1.4rem;
+      color: white;
+      margin-top: 10px;
+      font-weight: 400;
+      opacity: 0.95;
+    }
     section {
       padding: 25px;
       border-bottom: 1px solid #eee;
     }
-    h2 {
-      color: #1a73e8;
-      margin-bottom: 15px;
-    }
     p { margin-bottom: 15px; }
-    table {
-      width: 100%;
-      border-collapse: collapse;
-      margin: 15px 0;
-    }
-    th, td {
-      padding: 12px;
-      text-align: left;
-      border-bottom: 1px solid #ddd;
-    }
-    th {
-      background-color: #f1f8ff;
-      font-weight: bold;
-    }
-    tr:hover { background-color: #f5f9ff; }
-    .results-grid {
-      display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
-      gap: 15px;
-      margin-top: 15px;
-    }
-    .result-card {
-      border: 1px solid #ddd;
-      border-radius: 8px;
-      padding: 15px;
-      background: #fafafa;
-    }
+    ul { margin-left: 20px; margin-top: 10px; }
+    li { margin-bottom: 8px; }
     footer {
       text-align: center;
       padding: 20px;
       color: #666;
       font-size: 0.9rem;
     }
-    @media (max-width: 600px) {
+    a { color: #1a73e8; text-decoration: none; }
+    a:hover { text-decoration: underline; }
+
+    /* === Carousel Style === */
+    .carousel-container {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 12px;
+      margin: 25px 0;
+      position: relative;
+      padding: 10px 0;
+    }
+    .carousel-track {
+      display: flex;
+      width: 600px;
+      overflow: hidden;
+      border-radius: 8px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+    }
+    .carousel-slide {
+      min-width: 100%;
+      text-align: center;
+      padding: 20px;
+      background: white;
+    }
+    .carousel-slide img {
+      max-width: 100%;
+      height: auto;
+      border-radius: 6px;
+      margin-bottom: 12px;
+    }
+    .carousel-btn {
+      background: #1a73e8;
+      color: white;
+      border: none;
+      width: 40px;
+      height: 40px;
+      border-radius: 50%;
+      font-size: 18px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: background 0.2s;
+      flex-shrink: 0;
+    }
+    .carousel-btn:hover {
+      background: #0d5cb6;
+    }
+    .carousel-dots {
+      display: flex;
+      gap: 8px;
+      margin-top: 15px;
+      justify-content: center;
+      width: 100%;
+    }
+    .carousel-dots .dot {
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+      background: #ccc;
+      cursor: pointer;
+    }
+    .carousel-dots .dot.active {
+      background: #1a73e8;
+    }
+
+    @media (max-width: 650px) {
+      .carousel-track { width: 90vw; }
       .container { border-radius: 0; }
       header h1 { font-size: 1.8rem; }
     }
-    .image-scroll {
-  display: flex;
-  overflow-x: auto;
-  gap: 20px;
-  padding: 15px 0;
-  margin: 20px 0;
-  -webkit-overflow-scrolling: touch; /* Mượt trên iOS */
-  scrollbar-width: thin; /* Firefox */
-}
-  .image-scroll::-webkit-scrollbar {
-    height: 8px;
-  }
-  .image-scroll::-webkit-scrollbar-thumb {
-    background: #cbd5e1;
-    border-radius: 4px;
-  }
-  .image-scroll::-webkit-scrollbar-track {
-    background: #f1f5f9;
-  }
-  .scroll-item {
-    flex: 0 0 auto;
-    width: 320px;
-    text-align: center;
-  }
-  .scroll-item img {
-    width: 100%;
-    height: auto;
-    border-radius: 8px;
-    border: 1px solid #ddd;
-    transition: transform 0.2s;
-  }
-  .scroll-item img:hover {
-    transform: scale(1.02);
-  }
-  .scroll-item .caption {
-    margin-top: 8px;
-    font-size: 0.95rem;
-    color: #555;
-  }
   </style>
 </head>
 <body>
   <div class="container">
     <header>
       <h1>Phân Tích Dữ Liệu Lớn</h1>
-      <h2>Đề tài: Xử lý dữ liệu lớn bằng kỹ thuật Đối sánh mẫu</h2>
+      <h2>Đề tài: Few-Shot Pattern Detection bằng Đối sánh Mẫu</h2>
     </header>
 
     <section>
@@ -145,51 +154,167 @@
         pp. 1–5, 2023, 
         doi: <a href="https://openaccess.thecvf.com/content/ICCV2025/html/Jo_Few-Shot_Pattern_Detection_via_Template_Matching_and_Regression_ICCV_2025_paper.html" target="_blank" style="color: #1e3a8a;">10.1109/ICIP49359.2023.123456789</a>.
       </p>
+
+
+      <!-- Carousel: Sơ đồ hệ thống -->
+      <h3>🖼️ Kiến Trúc Mô Hình TMR</h3>
+      <div class="system-carousel">
+        <div class="carousel-container">
+          <button class="carousel-btn prev-btn">&lt;</button>
+          <div class="carousel-track">
+            <div class="carousel-slide">
+              <img src="images/backbone.png" alt="Backbone">
+              <div class="caption">1. Trích xuất đặc trưng (SAM-ViT)</div>
+            </div>
+            <div class="carousel-slide">
+              <img src="images/template_matching.png" alt="Template Matching">
+              <div class="caption">2. Đối sánh mẫu</div>
+            </div>
+            <div class="carousel-slide">
+              <img src="images/regression.png" alt="Regression">
+              <div class="caption">3. Regression module</div>
+            </div>
+            <div class="carousel-slide">
+              <img src="images/nms.png" alt="NMS">
+              <div class="caption">4. Non-Maximum Suppression</div>
+            </div>
+          </div>
+          <button class="carousel-btn next-btn">&gt;</button>
+        </div>
+        <div class="carousel-dots" id="system-dots"></div>
+      </div>
+
+      <p style="font-size: 0.95rem; color: #555; margin-top: 20px; padding-top: 15px; border-top: 1px solid #eee;">
+        <strong>Trích dẫn:</strong> E. Jo et al., ICCV 2025. 
+        <a href="https://openaccess.thecvf.com/content/ICCV2025/html/Jo_Few-Shot_Pattern_Detection_via_Template_Matching_and_Regression_ICCV_2025_paper.html" target="_blank">[Link]</a>
+      </p>
     </section>
 
     <section>
-      <h2>🗃️ Dữ Liệu (Dataset)</h2>
-      <p>Dự án sử dụng kết hợp các nguồn dữ liệu sau:</p>
-      <ul style="margin-left: 20px; margin-top: 10px;">
-        <li><strong>SKU-110K</strong>: Ảnh siêu thị/kho với hàng trăm vật thể mỗi ảnh</li>
-        <li><strong>Dữ liệu tự thu thập</strong>: Cảnh giao thông thực tế tại Hà Nội (2025–2026)</li>
+      <h2>🗃️ Dữ Liệu</h2>
+      <ul>
+        <li><strong>FSC-147</strong>: 3,630 ảnh, dùng để đánh giá few-shot counting</li>
+        <li><strong>Dữ liệu tự thu thập</strong>: Cảnh giao thông & kho bãi tại Hà Nội</li>
       </ul>
-      <p>Tổng số ảnh huấn luyện: ~20,000 (đã chia TRAIN/VAL/TEST)</p>
     </section>
 
-    <section class="section">
-  <h2>📈 Kết Quả Đánh Giá</h2>
-  <p><strong>Nhận xét tổng quan:</strong></p>
-  <ul>
-    <li><strong>Regression module</strong> cho kết quả tốt nhất về cả loss, MAE và RMSE — đặc biệt ổn định và giảm nhanh.</li>
-    <li><strong>num_exemplars=3</strong> vượt trội hơn num_exemplars=1 — chứng tỏ việc dùng nhiều mẫu giúp cải thiện hiệu suất.</li>
-    <li><strong>Khớp mẫu</strong> có lúc tốt, nhưng không ổn định — cần điều chỉnh thêm.</li>
-  </ul>
+    <!-- 🔁 PHỤC HỒI LẠI PHẦN KẾT QUẢ ĐÁNH GIÁ CỦA BẠN -->
+    <section>
+      <h2>📈 Kết Quả Đánh Giá</h2>
+      <p><strong>Nhận xét tổng quan:</strong></p>
+      <ul>
+        <li><strong>Regression module</strong> cho kết quả tốt nhất về cả loss, MAE và RMSE — đặc biệt ổn định và giảm nhanh.</li>
+        <li><strong>num_exemplars=3</strong> vượt trội hơn num_exemplars=1 — chứng tỏ việc dùng nhiều mẫu giúp cải thiện hiệu suất.</li>
+        <li><strong>Khớp mẫu</strong> có lúc tốt, nhưng không ổn định — cần điều chỉnh thêm.</li>
+      </ul>
 
-  <div class="image-scroll">
-    <div class="scroll-item">
-      <img src="images/Biểu đồ Train Loss theo Epoch.png" alt="Train Loss">
-      <div class="caption">Biểu đồ Train Loss theo Epoch</div>
-    </div>
-    <div class="scroll-item">
-      <img src="images/Biểu đồ MAE Validation theo Epoch.png" alt="MAE Validation">
-      <div class="caption">Biểu đồ MAE Validation theo Epoch</div>
-    </div>
-    <div class="scroll-item">
-      <img src="images/Biểu đồ RMSE Validation theo Epoch.png" alt="RMSE Validation">
-      <div class="caption">Biểu đồ RMSE Validation theo Epoch</div>
-    </div>
-  </div>
+      <!-- Hiển thị biểu đồ: dùng cuộn ngang (hoặc carousel nếu muốn) -->
+        <p><strong>Biểu đồ huấn luyện:</strong></p>
+        <div class="metrics-carousel">
+        <div class="carousel-container">
+            <button class="carousel-btn prev-btn">&lt;</button>
+            <div class="carousel-track">
+            <div class="carousel-slide">
+                <img src="images/train_loss.png" alt="Train Loss">
+                <div class="caption">Train Loss theo Epoch</div>
+            </div>
+            <div class="carousel-slide">
+                <img src="images/mae_validation.png" alt="MAE Validation">
+                <div class="caption">MAE Validation theo Epoch</div>
+            </div>
+            <div class="carousel-slide">
+                <img src="images/rmse_validation.png" alt="RMSE Validation">
+                <div class="caption">RMSE Validation theo Epoch</div>
+            </div>
+            </div>
+            <button class="carousel-btn next-btn">&gt;</button>
+        </div>
+        <div class="carousel-dots" id="metrics-dots"></div>
+        </div>
+    </section>
 
-  <p style="margin-top: 20px; font-style: italic; color: var(--text-secondary);">
-    *Biểu đồ được vẽ dựa trên dữ liệu huấn luyện thực tế từ 4 phương pháp khác nhau.*
-  </p>
-</section>
+    <!-- Phần demo thực tế -->
+    <section>
+      <h2>📸 Demo Kết Quả Thực Tế</h2>
+      <p>Kết quả chạy mô hình trên dữ liệu thực tế tại Việt Nam:</p>
+
+      <div class="demo-carousel">
+        <div class="carousel-container">
+          <button class="carousel-btn prev-btn">&lt;</button>
+          <div class="carousel-track">
+            <div class="carousel-slide">
+              <img src="images/demo1.jpg" alt="Demo 1">
+              <div class="caption">Phát hiện mẫu xe máy</div>
+            </div>
+            <div class="carousel-slide">
+              <img src="images/demo2.jpg" alt="Demo 2">
+              <div class="caption">Đếm hàng hóa trong kệ</div>
+            </div>
+            <div class="carousel-slide">
+              <img src="images/demo3.jpg" alt="Demo 3">
+              <div class="caption">Phát hiện ký hiệu lặp lại</div>
+            </div>
+          </div>
+          <button class="carousel-btn next-btn">&gt;</button>
+        </div>
+        <div class="carousel-dots" id="demo-dots"></div>
+      </div>
+    </section>
 
     <footer>
-      <p>© 2026 Nhóm 5 – Khoa Công nghệ Thông tin, Đại học Thủy lợi</p>
-      <p> GitHub Pages | <a href="https://github.com/NgThiem/BigData_Nhom5" target="_blank">Source Code</a></p>
+      <p>© 2026 Nhóm 5 – Khoa CNTT, Đại học Thủy lợi</p>
+      <p>GitHub Pages | 
+        <a href="https://github.com/NgThiem/BigData_Nhom5" target="_blank">Source Code</a>
+      </p>
     </footer>
   </div>
+
+  <!-- JavaScript cho Carousel (chỉ áp dụng cho sơ đồ & demo) -->
+  <script>
+    function initCarousel(trackSelector, dotsId) {
+      const track = document.querySelector(trackSelector);
+      const slides = track.querySelectorAll('.carousel-slide');
+      const dotsContainer = document.getElementById(dotsId);
+      let currentIndex = 0;
+
+      slides.forEach((_, i) => {
+        const dot = document.createElement('div');
+        dot.classList.add('dot');
+        if (i === 0) dot.classList.add('active');
+        dot.addEventListener('click', () => goToSlide(i));
+        dotsContainer.appendChild(dot);
+      });
+
+      const dots = dotsContainer.querySelectorAll('.dot');
+
+      function updateCarousel() {
+        track.style.transform = `translateX(-${currentIndex * 100}%)`;
+        dots.forEach((dot, i) => {
+          dot.classList.toggle('active', i === currentIndex);
+        });
+      }
+
+      function goToSlide(index) {
+        currentIndex = index;
+        updateCarousel();
+      }
+
+      const container = track.closest('.carousel-container');
+      container.querySelector('.prev-btn').addEventListener('click', () => {
+        currentIndex = (currentIndex - 1 + slides.length) % slides.length;
+        updateCarousel();
+      });
+      container.querySelector('.next-btn').addEventListener('click', () => {
+        currentIndex = (currentIndex + 1) % slides.length;
+        updateCarousel();
+      });
+    }
+
+    document.addEventListener('DOMContentLoaded', () => {
+      initCarousel('.system-carousel .carousel-track', 'system-dots');
+      initCarousel('.demo-carousel .carousel-track', 'demo-dots');
+      initCarousel('.metrics-carousel .carousel-track', 'metrics-dots');
+    });
+  </script>
 </body>
 </html>
