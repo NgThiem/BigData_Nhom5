@@ -66,6 +66,11 @@
       display: flex;
       width: 600px;
       transition: transform 0.4s ease;
+    }
+    .carousel-track-wrapper {
+      position: relative;
+      width: 600px;
+      overflow: hidden;
       border-radius: 8px;
       box-shadow: 0 2px 8px rgba(0,0,0,0.1);
     }
@@ -150,7 +155,11 @@
       <div class="system-carousel">
         <div class="carousel-container">
           <button class="carousel-btn prev-btn">&lt;</button>
-          <div class="carousel-track">
+          <div class="carousel-track-wrapper">
+              <div class="carousel-track">...</div>
+          </div>
+          <button class="carousel-btn next-btn">&gt;</button>
+        </div>
             <div class="carousel-slide">
               <img src="images/Backbone.png" alt="Backbone">
               <div class="caption">1. Trích xuất đặc trưng (SAM-ViT)</div>
@@ -184,11 +193,13 @@
     </section>
 
     <section>
-      <h2>🗃️ Dữ Liệu</h2>
-      <ul>
-        <li><strong>FSC-147</strong>: 3,630 ảnh, dùng để đánh giá few-shot counting</li>
-        <li><strong>Dữ liệu tự thu thập</strong>: Cảnh giao thông & kho bãi tại Hà Nội</li>
+      <h2>🗃️ Dữ Liệu (Dataset)</h2>
+      <p>Dự án sử dụng kết hợp các nguồn dữ liệu sau:</p>
+      <ul style="margin-left: 20px; margin-top: 10px;">
+        <li><strong>SKU-110K</strong>: Ảnh siêu thị/kho với hàng trăm vật thể mỗi ảnh</li>
+        <li><strong>Dữ liệu tự thu thập</strong>: Cảnh giao thông thực tế tại Hà Nội (2025–2026)</li>
       </ul>
+      <p>Tổng số ảnh huấn luyện: ~20,000 (đã chia TRAIN/VAL/TEST)</p>
     </section>
 
     <!-- 🔁 PHỤC HỒI LẠI PHẦN KẾT QUẢ ĐÁNH GIÁ CỦA BẠN -->
@@ -205,8 +216,12 @@
         <p><strong>Biểu đồ huấn luyện:</strong></p>
         <div class="metrics-carousel">
         <div class="carousel-container">
-            <button class="carousel-btn prev-btn">&lt;</button>
-            <div class="carousel-track">
+          <button class="carousel-btn prev-btn">&lt;</button>
+          <div class="carousel-track-wrapper">
+            <div class="carousel-track">...</div>
+          </div>
+          <button class="carousel-btn next-btn">&gt;</button>
+        </div>
             <div class="carousel-slide">
                 <img src="images/Train_Loss.png" alt="Train Loss">
                 <div class="caption">Train Loss theo Epoch</div>
@@ -233,8 +248,12 @@
 
       <div class="demo-carousel">
         <div class="carousel-container">
-          <button class="carousel-btn prev-btn">&lt;</button>
-          <div class="carousel-track">
+        <button class="carousel-btn prev-btn">&lt;</button>
+        <div class="carousel-track-wrapper">
+        <div class="carousel-track">...</div>
+        </div>
+        <button class="carousel-btn next-btn">&gt;</button>
+      </div>
             <div class="carousel-slide">
               <img src="images/demo1.png" alt="Demo 1">
               <div class="caption">Phát hiện xe trong giao thông</div>
